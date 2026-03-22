@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сила Архимеда — Интерактивная симуляция</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #eef4fb;
+    --panel: #ffffff;
+    --border: #b8d0ea;
+    --accent: #0077cc;
+    --accent2: #d94f1e;
+    --accent3: #2a9600;
+    --water: #0ea5e9;
+    --water-light: #0369a1;
+    --gold: #a07800;
+    --text: #12253d;
+    --muted: #5a7090;
+    --glow: 0 0 20px rgba(0,119,204,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Exo 2', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, rgba(0,100,200,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,150,255,0.05) 0%, transparent 40%);
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 20px 20px 10px;
+    position: relative;
+  }
+  header::after {
+    content: '';
+    display: block;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin-top: 12px;
+  }
+  .title-line {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.2rem, 3vw, 2rem);
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,119,204,0.25);
+    letter-spacing: 3px;
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    display: grid;
+    grid-template-columns: 280px 1fr 260px;
+    gap: 16px;
+    padding: 12px 20px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* PANELS */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,60,140,0.08);
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* CONTROLS */
+  .control-group { margin-bottom: 18px; }
+  .control-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .control-value {
+    color: var(--accent);
+    font-weight: 700;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+  }
+
+  input[type=range] {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    cursor: pointer;
+  }
+
+  /* OBJECT SELECTOR */
+  .objects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .obj-btn { background: #f0f6ff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 6px; cursor: pointer; text-align: center; transition: all 0.2s; color: var(--text); font-family: 'Exo 2', sans-serif; font-size: 0.75rem; }
+  .obj-btn:hover { border-color: var(--accent); background: rgba(0,119,204,0.08); }
+  .obj-btn.active { border-color: var(--accent); background: rgba(0,119,204,0.12); box-shadow: 0 0 8px rgba(0,119,204,0.15); color: var(--accent); }
+  .obj-icon { font-size: 1.4rem; display: block; margin-bottom: 3px; }
+
+  /* LIQUID SELECTOR */
+  .liquid-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .liq-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 7px 4px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: #f0f6ff;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-family: 'Exo 2', sans-serif;
+    color: var(--text);
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .liq-btn.active { border-color: var(--accent); background: rgba(0,119,204,0.1); color: var(--accent); }
+
+  /* SIMULATION CANVAS AREA */
+  .sim-area {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  canvas {
+    width: 100%;
+    border-radius: 10px;
+    display: block;
+    cursor: pointer;
+  }
+
+  /* FORMULA STRIP */
+  .formula-strip {
+    background: rgba(0,119,204,0.05);
+    border: 1px solid rgba(0,119,204,0.2);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .formula-main {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1rem, 2.5vw, 1.4rem);
+    color: var(--accent);
+    text-shadow: none;
+    white-space: nowrap;
+  }
+  .formula-parts {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .formula-part {
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .formula-part span {
+    display: block;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  /* RIGHT PANEL — DATA */
+  .data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e8f0fa;
+  }
+  .data-row:last-child { border-bottom: none; }
+  .data-name { font-size: 0.78rem; color: var(--muted); }
+  .data-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.82rem;
+    color: var(--accent3);
+    font-weight: 700;
+  }
+  .data-val.red { color: var(--accent2); }
+  .data-val.blue { color: var(--water-light); }
+  .data-val.gold { color: var(--gold); }
+
+  /* STATUS BADGE */
+  .status-badge {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-align: center;
+    transition: all 0.4s;
+    letter-spacing: 1px;
+  }
+  .badge-float { background: rgba(42,150,0,0.08); border: 1px solid var(--accent3); color: var(--accent3); }
+  .badge-sink { background: rgba(217,79,30,0.08); border: 1px solid var(--accent2); color: var(--accent2); }
+  .badge-neutral { background: rgba(0,119,204,0.08); border: 1px solid var(--accent); color: var(--accent); }
+
+  /* FACT CARDS */
+  .fact-card {
+    background: #fff8f5;
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 8px 8px 0;
+    padding: 8px 10px;
+    margin-top: 10px;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+  .fact-card b { color: var(--text); }
+
+  /* STEPS */
+  .step-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--accent2);
+    background: rgba(217,79,30,0.05);
+    color: var(--accent2);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+  .step-btn:hover { background: rgba(217,79,30,0.12); }
+
+  .drop-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #0077cc, #0050aa);
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+    box-shadow: 0 3px 12px rgba(0,100,200,0.3);
+    margin-top: 12px;
+  }
+  .drop-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,100,200,0.4); }
+  .drop-btn:active { transform: translateY(0); }
+
+  /* QUIZ */
+  .quiz-area {
+    background: #f7faff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+  .quiz-q { font-size: 0.82rem; margin-bottom: 8px; color: var(--text); }
+  .quiz-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .q-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    font-size: 0.75rem;
+    font-family: 'Exo 2', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .q-btn:hover { border-color: var(--accent); background: rgba(0,119,204,0.05); }
+  .q-btn.correct { border-color: var(--accent3); background: rgba(42,150,0,0.08); color: var(--accent3); }
+  .q-btn.wrong { border-color: var(--accent2); background: rgba(217,79,30,0.08); color: var(--accent2); }
+
+  .score {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    color: var(--gold);
+    text-align: right;
+    margin-bottom: 8px;
+  }
+
+  /* BUBBLES */
+  @keyframes bubble {
+    0% { transform: translateY(0) scale(1); opacity: 0.6; }
+    100% { transform: translateY(-120px) scale(0.3); opacity: 0; }
+  }
+
+  /* SPLASH */
+  @keyframes splash {
+    0% { transform: scale(0); opacity: 0.8; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-line">⚓ СИЛА АРХИМЕДА</div>
+  <div class="subtitle">Интерактивная симуляция · 7 класс · Физика</div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT: CONTROLS -->
+  <div class="panel">
+    <div class="panel-title">🎮 Управление</div>
+
+    <div class="control-group">
+      <div class="panel-title" style="margin-bottom:8px">Выбери предмет</div>
+      <div class="objects-grid">
+        <button class="obj-btn active" onclick="selectObject('wood')" id="btn-wood">
+          <span class="obj-icon">🌲</span>Дерево
+        </button>
+        <button class="obj-btn" onclick="selectObject('iron')" id="btn-iron">
+          <span class="obj-icon">⚙️</span>Железо
+        </button>
+        <button class="obj-btn" onclick="selectObject('plastic')" id="btn-plastic">
+          <span class="obj-icon">🎈</span>Пластик
+        </button>
+        <button class="obj-btn" onclick="selectObject('lead')" id="btn-lead">
+          <span class="obj-icon">🔩</span>Свинец
+        </button>
+        <button class="obj-btn" onclick="selectObject('ice')" id="btn-ice">
+          <span class="obj-icon">❄️</span>Лёд
+        </button>
+        <button class="obj-btn" onclick="selectObject('gold')" id="btn-gold">
+          <span class="obj-icon">🏆</span>Золото
+        </button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="panel-title" style="margin-bottom:8px">Жидкость</div>
+      <div class="liquid-btns">
+        <button class="liq-btn active" onclick="selectLiquid('water')" id="liq-water">💧 Вода</button>
+        <button class="liq-btn" onclick="selectLiquid('salt')" id="liq-salt">🌊 Солёная</button>
+        <button class="liq-btn" onclick="selectLiquid('oil')" id="liq-oil">🛢️ Масло</button>
+        <button class="liq-btn" onclick="selectLiquid('mercury')" id="liq-mercury">⚗️ Ртуть</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Объём предмета</span>
+        <span class="control-value" id="vol-val">500 см³</span>
+      </div>
+      <input type="range" id="vol-slider" min="100" max="1000" value="500"
+        oninput="updateVol(this.value)">
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">
+        <span>Погружение</span>
+        <span class="control-value" id="depth-val">авто</span>
+      </div>
+      <input type="range" id="depth-slider" min="10" max="100" value="100"
+        oninput="updateDepth(this.value)">
+    </div>
+
+    <button class="drop-btn" onclick="dropObject()">▶ БРОСИТЬ В ВОДУ</button>
+    <button class="step-btn" onclick="showHint()">💡 ПОДСКАЗКА УЧИТЕЛЯ</button>
+
+    <div class="fact-card" id="hint-box">
+      Выбери предмет и нажми <b>«Бросить в воду»</b>, чтобы начать эксперимент!
+    </div>
+  </div>
+
+  <!-- CENTER: SIMULATION -->
+  <div class="sim-area">
+    <canvas id="sim" height="420"></canvas>
+
+    <div class="formula-strip">
+      <div class="formula-main">F<sub>A</sub> = ρ·g·V</div>
+      <div class="formula-parts">
+        <div class="formula-part">ρ — плотность<br><span id="f-rho">—</span></div>
+        <div class="formula-part">g — свободного падения<br><span>9,8 м/с²</span></div>
+        <div class="formula-part">V — объём<br><span id="f-vol">—</span></div>
+        <div class="formula-part">F<sub>A</sub> =<br><span id="f-fa" style="color:var(--accent)">—</span></div>
+      </div>
+    </div>
+
+    <!-- QUIZ -->
+    <div class="quiz-area">
+      <div class="score">🏅 Очки: <span id="score">0</span></div>
+      <div class="quiz-q" id="quiz-q">❓ Ответь на вопрос после эксперимента!</div>
+      <div class="quiz-btns" id="quiz-btns"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: DATA -->
+  <div class="panel">
+    <div class="panel-title">📊 Данные</div>
+
+    <div class="data-row">
+      <div class="data-name">Предмет</div>
+      <div class="data-val gold" id="d-obj">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">Жидкость</div>
+      <div class="data-val blue" id="d-liq">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">ρ предмета</div>
+      <div class="data-val" id="d-rho-obj">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">ρ жидкости</div>
+      <div class="data-val blue" id="d-rho-liq">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">Объём</div>
+      <div class="data-val" id="d-vol">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">Масса предмета</div>
+      <div class="data-val" id="d-mass">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">Вес в воздухе</div>
+      <div class="data-val red" id="d-weight">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">Сила Архимеда F<sub>A</sub></div>
+      <div class="data-val blue" id="d-fa">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">Видимый вес</div>
+      <div class="data-val" id="d-apparent">—</div>
+    </div>
+    <div class="data-row">
+      <div class="data-name">Глубина погружения</div>
+      <div class="data-val" id="d-depth">—</div>
+    </div>
+
+    <div class="status-badge" id="status-badge">⏳ Ждём эксперимент</div>
+
+    <div class="fact-card" id="right-fact">
+      <b>Факт:</b> Архимед открыл закон в ванне, когда искал способ проверить, не обманул ли ювелир царя Гиерона при изготовлении золотой короны! 👑
+    </div>
+  </div>
+
+</div>
+
+<script>
+const OBJECTS = {
+  wood:    { name: 'Дерево',  emoji: '🌲', rho: 600,   color: '#8B4513', r: 40 },
+  iron:    { name: 'Железо',  emoji: '⚙️', rho: 7874,  color: '#888',   r: 30 },
+  plastic: { name: 'Пластик', emoji: '🎈', rho: 900,   color: '#ff9f43', r: 38 },
+  lead:    { name: 'Свинец',  emoji: '🔩', rho: 11340, color: '#555',   r: 25 },
+  ice:     { name: 'Лёд',     emoji: '❄️', rho: 917,   color: '#a8e6cf', r: 42 },
+  gold:    { name: 'Золото',  emoji: '🏆', rho: 19300, color: '#ffd700', r: 28 },
+};
+
+const LIQUIDS = {
+  water:   { name: 'Вода',         rho: 1000,  color1: '#0369a1', color2: '#0ea5e9', alpha: 0.75 },
+  salt:    { name: 'Солёная вода',  rho: 1025,  color1: '#0c4a6e', color2: '#0284c7', alpha: 0.75 },
+  oil:     { name: 'Масло',         rho: 800,   color1: '#713f12', color2: '#ca8a04', alpha: 0.65 },
+  mercury: { name: 'Ртуть',         rho: 13600, color1: '#374151', color2: '#9ca3af', alpha: 0.9  },
+};
+
+const HINTS = {
+  wood:    '🪵 Дерево плавает, потому что его плотность (600 кг/м³) МЕНЬШЕ плотности воды (1000 кг/м³). Сила Архимеда больше веса!',
+  iron:    '⚙️ Железо тонет — его плотность 7874 кг/м³, что намного больше воды. Но корабли из стали плавают! Почему? Из-за формы — внутри есть воздух!',
+  plastic: '🧃 Пластик почти такой же плотности, как вода. Он едва плавает — погружается почти полностью.',
+  lead:    '🔩 Свинец — один из самых тяжёлых металлов. Он быстро идёт ко дну. Раньше из него делали грузила для рыбалки.',
+  ice:     '🧊 Лёд чуть легче воды (917 кг/м³). Поэтому айсберги плавают, но 90% их объёма скрыто под водой! Это опасно для кораблей.',
+  gold:    '🏆 Золото очень плотное — 19300 кг/м³! Именно поэтому его трудно подделать — фальшивое золото легче тонет по-другому.',
+};
+
+const FACTS = {
+  float:   'Тело плавает, когда F<sub>A</sub> ≥ P. То есть плотность тела ≤ плотности жидкости.',
+  sink:    'Тело тонет, когда F<sub>A</sub> < P. Плотность тела > плотности жидкости.',
+  neutral: 'Тело находится в равновесии! F<sub>A</sub> = P. Так плавают подводные лодки.',
+};
+
+const QUIZZES = [
+  { q: 'Что произойдёт с силой Архимеда, если увеличить объём тела?', opts: ['Уменьшится','Не изменится','Увеличится','Исчезнет'], ans: 2 },
+  { q: 'От чего зависит сила Архимеда?', opts: ['От веса тела','От плотности жидкости','От формы тела','От цвета тела'], ans: 1 },
+  { q: 'Почему корабль из стали плавает?', opts: ['Сталь легче воды','Из-за полого корпуса','Морская вода плотнее','Корабль заколдован ⚡'], ans: 1 },
+  { q: 'Айсберг: какая часть видна над водой?', opts: ['50%','90%','10%','25%'], ans: 2 },
+  { q: 'В какой жидкости сила Архимеда больше?', opts: ['В масле','В пресной воде','В солёной воде','Везде одинаково'], ans: 2 },
+];
+
+let curObj = 'wood';
+let curLiq = 'water';
+let curVol = 500;
+let curDepth = 100;
+let phase = 'idle'; // idle, dropping, resting
+let objY = 60;
+let targetY = 0;
+let velY = 0;
+let score = 0;
+let quizIdx = 0;
+let quizAnswered = false;
+let bubbles = [];
+let splashes = [];
+let quizQueue = [...QUIZZES].sort(() => Math.random()-0.5);
+
+const canvas = document.getElementById('sim');
+const ctx = canvas.getContext('2d');
+let dpr = window.devicePixelRatio || 1;
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = 420 * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  draw();
+}
+window.addEventListener('resize', () => { setTimeout(resize, 50); });
+
+function getW() { return canvas.offsetWidth; }
+function getH() { return 420; }
+function waterY() { return getH() * 0.45; }
+function waterH() { return getH() - waterY(); }
+
+function selectObject(key) {
+  curObj = key;
+  document.querySelectorAll('.obj-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-'+key).classList.add('active');
+  updateData();
+  draw();
+}
+
+function selectLiquid(key) {
+  curLiq = key;
+  document.querySelectorAll('.liq-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('liq-'+key).classList.add('active');
+  updateData();
+  draw();
+}
+
+function updateVol(v) {
+  curVol = parseInt(v);
+  document.getElementById('vol-val').textContent = curVol + ' см³';
+  updateData();
+  if (phase === 'resting') computeTargetY();
+}
+
+function updateDepth(v) {
+  curDepth = parseInt(v);
+  document.getElementById('depth-val').textContent = curDepth + '%';
+  if (phase === 'resting') computeTargetY();
+}
+
+function getData() {
+  const obj = OBJECTS[curObj];
+  const liq = LIQUIDS[curLiq];
+  const Vcm3 = curVol;
+  const Vm3 = Vcm3 * 1e-6;
+  const submergedFraction = Math.min(curDepth / 100, 1);
+  const Vsub = Vm3 * submergedFraction;
+
+  const mass = obj.rho * Vm3;
+  const weight = mass * 9.8;
+  const FA = liq.rho * 9.8 * Vsub;
+  const apparent = Math.max(weight - FA, 0);
+
+  const floatCondition = obj.rho <= liq.rho;
+  let floatFraction = floatCondition ? (1 - obj.rho / liq.rho) : 0;
+  
+  return { obj, liq, Vcm3, Vm3, mass, weight, FA, apparent, floatCondition, floatFraction, submergedFraction };
+}
+
+function updateData() {
+  const d = getData();
+  document.getElementById('d-obj').textContent = d.obj.emoji + ' ' + d.obj.name;
+  document.getElementById('d-liq').textContent = d.liq.name;
+  document.getElementById('d-rho-obj').textContent = d.obj.rho.toLocaleString() + ' кг/м³';
+  document.getElementById('d-rho-liq').textContent = d.liq.rho.toLocaleString() + ' кг/м³';
+  document.getElementById('d-vol').textContent = d.Vcm3 + ' см³';
+  document.getElementById('d-mass').textContent = (d.mass * 1000).toFixed(0) + ' г';
+  document.getElementById('d-weight').textContent = d.weight.toFixed(2) + ' Н';
+  document.getElementById('d-fa').textContent = d.FA.toFixed(3) + ' Н';
+  document.getElementById('d-apparent').textContent = d.apparent.toFixed(3) + ' Н';
+  document.getElementById('d-depth').textContent = curDepth + '%';
+
+  document.getElementById('f-rho').textContent = d.liq.rho + ' кг/м³';
+  document.getElementById('f-vol').textContent = (d.Vm3 * d.submergedFraction * 1e6).toFixed(1) + ' см³';
+  document.getElementById('f-fa').textContent = d.FA.toFixed(3) + ' Н';
+
+  if (phase !== 'idle') updateStatus(d);
+}
+
+function updateStatus(d) {
+  const badge = document.getElementById('status-badge');
+  const fact = document.getElementById('right-fact');
+
+  if (d.floatCondition && curDepth >= 90) {
+    badge.textContent = '🌊 ПЛЫВЁТ!';
+    badge.className = 'status-badge badge-float';
+    fact.innerHTML = '<b>Правило:</b> ' + FACTS.float;
+  } else if (!d.floatCondition && phase === 'resting') {
+    badge.textContent = '⬇️ ТОНЕТ!';
+    badge.className = 'status-badge badge-sink';
+    fact.innerHTML = '<b>Правило:</b> ' + FACTS.sink;
+  } else {
+    badge.textContent = '⚖️ РАВНОВЕСИЕ';
+    badge.className = 'status-badge badge-neutral';
+    fact.innerHTML = '<b>Правило:</b> ' + FACTS.neutral;
+  }
+}
+
+function computeTargetY() {
+  const d = getData();
+  const wy = waterY();
+  const wh = waterH();
+  const r = OBJECTS[curObj].r * (curVol / 500) ** (1/3);
+
+  if (d.floatCondition) {
+    const subFrac = 1 - d.floatFraction;
+    targetY = wy - r + subFrac * 2 * r;
+  } else {
+    targetY = getH() - r - 8;
+  }
+}
+
+function dropObject() {
+  phase = 'dropping';
+  objY = 40;
+  velY = 0;
+  bubbles = [];
+  splashes = [];
+  computeTargetY();
+
+  document.getElementById('status-badge').textContent = '⬇️ Падает...';
+  document.getElementById('status-badge').className = 'status-badge badge-neutral';
+
+  updateData();
+  spawnQuiz();
+}
+
+function stepPhysics() {
+  const d = getData();
+  const wy = waterY();
+  const r = OBJECTS[curObj].r * (curVol / 500) ** (1/3);
+  const inWater = objY + r > wy;
+
+  const gravity = 0.4;
+  const buoyancy = inWater ? Math.min((d.FA / Math.max(d.weight, 0.001)) * 0.35, 0.5) : 0;
+  const damping = inWater ? 0.88 : 0.99;
+
+  velY += gravity - buoyancy;
+  velY *= damping;
+  objY += velY;
+
+  // Splash on water entry
+  if (objY + r > wy && objY + r - velY <= wy) spawnSplash();
+
+  // Bubbles while submerged
+  if (inWater && Math.random() < 0.15) spawnBubble();
+
+  if (Math.abs(objY - targetY) < 1.5 && Math.abs(velY) < 0.4) {
+    objY = targetY;
+    velY = 0;
+    phase = 'resting';
+    updateData();
+    updateStatus(d);
+  }
+}
+
+function animate() { /* kept for compatibility — logic moved to mainLoop/stepPhysics */ }
+
+function spawnBubble() {
+  const x = getW() / 2 + (Math.random() - 0.5) * 50;
+  const y = objY + 10 + Math.random() * 20;
+  bubbles.push({ x, y, r: 2 + Math.random() * 4, speed: 0.8 + Math.random(), life: 100 });
+}
+
+function spawnSplash() {
+  const cx = getW() / 2;
+  const y = waterY();
+  for (let i = 0; i < 12; i++) {
+    const angle = (Math.PI * 2 * i / 12) - Math.PI / 2;
+    const speed = 2 + Math.random() * 4;
+    splashes.push({
+      x: cx, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      r: 2 + Math.random() * 3,
+      life: 80
+    });
+  }
+}
+
+function draw() {
+  const W = getW(), H = getH();
+  const wy = waterY(), wh = waterH();
+  const liq = LIQUIDS[curLiq];
+  const obj = OBJECTS[curObj];
+  const r = obj.r * (curVol / 500) ** (1/3);
+  const cx = W / 2;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#e8f2ff');
+  bgGrad.addColorStop(1, '#d0e6ff');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Tank walls
+  ctx.strokeStyle = 'rgba(0,100,200,0.35)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(40, 30, W - 80, H - 40);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,80,180,0.06)';
+  ctx.lineWidth = 1;
+  for (let y = 40; y < H; y += 30) {
+    ctx.beginPath(); ctx.moveTo(42, y); ctx.lineTo(W - 42, y); ctx.stroke();
+  }
+
+  // Water
+  const waterGrad = ctx.createLinearGradient(0, wy, 0, H);
+  waterGrad.addColorStop(0, liq.color2);
+  waterGrad.addColorStop(1, liq.color1);
+  ctx.globalAlpha = liq.alpha;
+  ctx.fillStyle = waterGrad;
+  ctx.fillRect(41, wy, W - 82, wh - 10);
+  ctx.globalAlpha = 1;
+
+  // Water surface shimmer
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let x = 41; x < W - 41; x += 8) {
+    const wave = Math.sin((x + Date.now() * 0.02) * 0.05) * 2;
+    if (x === 41) ctx.moveTo(x, wy + wave);
+    else ctx.lineTo(x, wy + wave);
+  }
+  ctx.stroke();
+
+  // Density label
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.font = 'bold 11px Exo 2';
+  ctx.fillText('ρ = ' + liq.rho + ' кг/м³', 52, wy + 20);
+
+  // Bubbles
+  bubbles.forEach(b => {
+    ctx.globalAlpha = b.life / 100;
+    ctx.strokeStyle = 'rgba(180,230,255,0.8)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  // Splashes
+  splashes.forEach(s => {
+    ctx.globalAlpha = s.life / 80;
+    ctx.fillStyle = liq.color2;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Object
+  if (phase !== 'idle') {
+    // Shadow in water
+    if (objY + r > wy) {
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(cx, Math.min(objY + r + 5, H - 20), r * 0.8, r * 0.25, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Object glow
+    const glowGrad = ctx.createRadialGradient(cx - r * 0.3, objY - r * 0.3, 0, cx, objY, r * 1.5);
+    glowGrad.addColorStop(0, obj.color + 'aa');
+    glowGrad.addColorStop(1, obj.color + '00');
+    ctx.fillStyle = glowGrad;
+    ctx.beginPath();
+    ctx.arc(cx, objY, r * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Object body
+    const objGrad = ctx.createRadialGradient(cx - r * 0.3, objY - r * 0.3, 0, cx, objY, r);
+    objGrad.addColorStop(0, obj.color + 'ff');
+    objGrad.addColorStop(1, obj.color + '88');
+    ctx.fillStyle = objGrad;
+    ctx.beginPath();
+    ctx.arc(cx, objY, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Object emoji
+    ctx.font = (r * 0.9) + 'px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(obj.emoji, cx, objY);
+
+    // Force arrows (only when in water and resting)
+    if (phase === 'resting' && objY + r > wy) {
+      const d = getData();
+      const maxLen = 65;
+      const minLen = 12;
+      const baseScale = 35;
+
+      // Weight arrow (down, red) — proportional to weight
+      const wLen = Math.max(minLen, Math.min(d.weight * 0.004 * baseScale, maxLen));
+      const ax = Math.min(cx + r + 18, W - 55);
+      drawArrow(ax, objY, ax, Math.min(objY + wLen, H - 15), '#ff6b35', 'P');
+
+      // FA arrow (up, blue) — proportional to FA
+      const faLen = Math.max(minLen, Math.min(d.FA * 0.004 * baseScale, maxLen));
+      const bx = Math.max(cx - r - 18, 50);
+      drawArrow(bx, objY, bx, Math.max(objY - faLen, 35), '#00d4ff', 'Fₐ');
+    }
+  } else {
+    // Idle: show object above water
+    const objGrad = ctx.createRadialGradient(cx - r * 0.3, 80 - r * 0.3, 0, cx, 80, r);
+    objGrad.addColorStop(0, obj.color + 'ff');
+    objGrad.addColorStop(1, obj.color + '88');
+    ctx.fillStyle = objGrad;
+    ctx.beginPath();
+    ctx.arc(cx, 80, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = (r * 0.9) + 'px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(obj.emoji, cx, 80);
+
+    // Hint arrow
+    ctx.globalAlpha = 0.5 + 0.5 * Math.sin(Date.now() * 0.003);
+    ctx.fillStyle = '#00d4ff';
+    ctx.font = '13px Exo 2';
+    ctx.fillText('▼ нажми «Бросить»', cx, 120);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+
+  // Depth ruler
+  if (phase === 'resting') {
+    ctx.strokeStyle = 'rgba(0,212,255,0.2)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(W - 55, wy);
+    ctx.lineTo(W - 55, H - 15);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(0,212,255,0.5)';
+    ctx.font = '10px Exo 2';
+    ctx.fillText('глубина', W - 52, wy + 12);
+  }
+}
+
+function drawArrow(x1, y1, x2, y2, color, label) {
+  const headLen = 10;
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  const nx = dx/len, ny = dy/len;
+
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 2.5;
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2 - nx*headLen, y2 - ny*headLen);
+  ctx.stroke();
+
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - nx*headLen - ny*6, y2 - ny*headLen + nx*6);
+  ctx.lineTo(x2 - nx*headLen + ny*6, y2 - ny*headLen - nx*6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.font = 'bold 11px Exo 2';
+  ctx.fillText(label, x2 + 5, y2);
+}
+
+function showHint() {
+  document.getElementById('hint-box').innerHTML = HINTS[curObj];
+}
+
+function spawnQuiz() {
+  if (quizQueue.length === 0) quizQueue = [...QUIZZES].sort(() => Math.random()-0.5);
+  const q = quizQueue.shift();
+  quizIdx++;
+  quizAnswered = false;
+
+  document.getElementById('quiz-q').textContent = '❓ ' + q.q;
+  const btns = document.getElementById('quiz-btns');
+  btns.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.className = 'q-btn';
+    b.textContent = opt;
+    b.onclick = () => {
+      if (quizAnswered) return;
+      quizAnswered = true;
+      if (i === q.ans) {
+        b.classList.add('correct');
+        score += 10;
+        document.getElementById('score').textContent = score;
+      } else {
+        b.classList.add('wrong');
+        btns.children[q.ans].classList.add('correct');
+      }
+    };
+    btns.appendChild(b);
+  });
+}
+
+// Init — wait for layout before reading canvas size
+window.addEventListener('load', () => {
+  resize();
+  updateData();
+  mainLoop();
+});
+
+// Single animation loop — handles both idle and active phases
+function mainLoop() {
+  if (phase === 'dropping') {
+    stepPhysics();
+  }
+  // Update particles every frame
+  const wy = waterY();
+  bubbles = bubbles.filter(b => b.y > wy - 80 && b.life > 0);
+  bubbles.forEach(b => { b.y -= b.speed; b.x += Math.sin(b.y * 0.1) * 0.5; b.life -= 2; });
+  splashes = splashes.filter(s => s.life > 0);
+  splashes.forEach(s => { s.x += s.vx; s.y += s.vy; s.vy += 0.15; s.life -= 3; });
+  draw();
+  requestAnimationFrame(mainLoop);
+}
+</script>
+</body>
+</html>
